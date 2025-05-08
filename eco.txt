@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Econnect 🌱</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-green-50 text-gray-800">
+
+    <!-- Pantalla de bienvenida -->
+    <div id="welcomeScreen" class="min-h-screen flex flex-col justify-center items-center p-6 bg-green-100">
+        <h1 class="text-4xl font-bold text-green-700 mb-4">Bienvenido a Econnect 🌍</h1>
+        <p class="max-w-xl text-center mb-6 text-lg">
+            Econnect es una plataforma educativa que promueve hábitos sostenibles a través de desafíos ambientales. Súmate, gana puntos, y haz del mundo un lugar mejor. ¡Tú también puedes hacer la diferencia!
+        </p>
+        <button onclick="showLogin()" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">Comenzar</button>
+    </div>
+
+    <!-- Modal de login/registro -->
+    <div id="loginModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-lg p-8 max-w-sm w-full text-center">
+            <h2 class="text-2xl font-bold text-green-600 mb-4">Iniciar Sesión</h2>
+            <input type="text" id="loginUsername" placeholder="Nombre de usuario" class="w-full mb-3 p-2 border rounded" />
+            <input type="password" id="loginPassword" placeholder="Contraseña" class="w-full mb-3 p-2 border rounded" />
+            <button onclick="login()" class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600">Entrar</button>
+            <p id="loginError" class="text-red-600 text-sm mt-2 hidden">Usuario o contraseña incorrectos.</p>
+            <hr class="my-4" />
+            <h2 class="text-lg font-bold text-green-600 mb-2">¿Nuevo aquí?</h2>
+            <input type="text" id="registerUsername" placeholder="Nuevo usuario" class="w-full mb-2 p-2 border rounded" />
+            <input type="password" id="registerPassword" placeholder="Contraseña" class="w-full mb-3 p-2 border rounded" />
+            <button onclick="register()" class="w-full bg-green-400 text-white py-2 rounded hover:bg-green-500">Registrarse</button>
+        </div>
+    </div>
+
+    <!-- Panel principal del usuario -->
+    <div id="userPanel" class="hidden max-w-5xl mx-auto p-6 mt-6 bg-white rounded-xl shadow-lg">
+
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold text-green-700">Bienvenido, <span id="userNameDisplay"></span> 👋</h1>
+            <button onclick="logout()" class="bg-red-500 text-white px-4 py-1 rounded hover:bg-red-600">Cerrar sesión</button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="bg-green-100 p-4 rounded">
+                <h2 class="font-semibold text-green-700">Tus Estadísticas</h2>
+                <p>Desafíos completados: <span id="userCompleted">0</span></p>
+                <p>Puntos acumulados: <span id="userPoints">0</span></p>
+            </div>
+        </div>
+
+        <h2 class="text-xl font-bold text-green-700 mb-2">Desafíos disponibles</h2>
+        <div id="challengeList" class="grid md:grid-cols-2 gap-4"></div>
+    </div>
+
+    <!-- Panel del administrador -->
+    <div id="adminPanel" class="hidden max-w-6xl mx-auto p-6 mt-6 bg-white rounded-xl shadow-lg">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold text-green-800">Panel de Administración 🛠️</h1>
+            <button onclick="logout()" class="bg-red-500 text-white px-4 py-1 rounded hover:bg-red-600">Cerrar sesión</button>
+        </div>
+
+        <div class="bg-green-100 p-4 rounded mb-6">
+            <h2 class="font-semibold">Estadísticas Globales</h2>
+            <p>Usuarios registrados: <span id="totalUsers">0</span></p>
+            <p>Puntos totales: <span id="totalPoints">0</span></p>
+            <p>Desafíos completados: <span id="totalCompleted">0</span></p>
+        </div>
+
+        <h2 class="text-xl font-bold text-green-700 mb-2">Evidencias pendientes</h2>
+        <div id="adminEvidenceList" class="space-y-4"></div>
+    </div>
+
+    <script>
+        let users = JSON.parse(localStorage.getItem('users') || '{}');
+        let currentUser = null;
+        const challenges = [{
+            name: 'Recoger Basura',
+            img: 'https://cdn-icons-png.flaticon.com/512/2909/2909765.png'
+        }, {
+            name: 'Usar Bicicleta',
+            img: 'https://cdn-icons-png.flaticon.com/512/1946/1946488.png'
+        }, {
+            name: 'Ahorrar Agua',
+            img: 'https://cdn-icons-png.flaticon.com/512/861/861256.png'
+        }, {
+            name: 'Recolección de Pet Durante una Semana',
+            img: 'https://cdn-icons-png.flaticon.com/512/809/809957.png'
+        }];
+
+        function showLogin() {
+            document.getElementById('welcomeScreen').classList.add('hidden');
+            document.getElementById('loginModal').classList.remove('hidden');
+        }
+
+        function register() {
+            const user = document.getElementById("registerUsername").value.trim();
+            const pass = document.getElementById("registerPassword").value.trim();
+            if (user && pass && !users[user]) {
+                users[user] = {
+                    password: pass,
+                    points: 0,
+                    completed: [],
+                    evidences: []
+                };
+                localStorage.setItem('users', JSON.stringify(users));
+                alert("Usuario registrado correctamente");
+            } else {
+                alert("Usuario inválido o ya existe.");
+            }
+        }
+
+        function login() {
+            const user = document.getElementById("loginUsername").value.trim();
+            const pass = document.getElementById("loginPassword").value.trim();
+
+            if (user === "admin" && pass === "admin123") {
+                currentUser = "admin";
+                document.getElementById("loginModal").classList.add("hidden");
+                document.getElementById("adminPanel").classList.remove("hidden");
+                updateAdminPanel();
+                return;
+            }
+
+            if (users[user] && users[user].password === pass) {
+                currentUser = user;
+                document.getElementById("loginModal").classList.add("hidden");
+                document.getElementById("userPanel").classList.remove("hidden");
+                document.getElementById("userNameDisplay").innerText = currentUser;
+                updateUserPanel();
+            } else {
+                document.getElementById("loginError").classList.remove("hidden");
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById("userPanel").classList.add("hidden");
+            document.getElementById("adminPanel").classList.add("hidden");
+            document.getElementById("loginModal").classList.remove("hidden");
+        }
+
+        function completeChallenge(index, fileInput) {
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    users[currentUser].evidences.push({
+                        challenge: challenges[index].name,
+                        data: reader.result,
+                        status: "Pendiente"
+                    });
+                    localStorage.setItem('users', JSON.stringify(users));
+                    alert("Evidencia enviada para revisión.");
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function updateUserPanel() {
+            const user = users[currentUser];
+            document.getElementById("userPoints").innerText = user.points;
+            document.getElementById("userCompleted").innerText = user.completed.length;
+
+            document.getElementById("challengeList").innerHTML = challenges.map((ch, i) => `
+        <div class="border rounded p-4 flex gap-4 items-center bg-gray-50">
+          <img src="${ch.img}" alt="${ch.name}" class="w-12 h-12">
+          <div>
+            <p class="font-semibold">${ch.name}</p>
+            <input type="file" accept="image/*" onchange="completeChallenge(${i}, this)" class="mt-2">
+          </div>
+        </div>
+      `).join('');
+        }
+
+        function updateAdminPanel() {
+            let allEvidences = [];
+            let totalPoints = 0;
+            let totalCompleted = 0;
+
+            for (let user in users) {
+                totalPoints += users[user].points;
+                totalCompleted += users[user].completed.length;
+
+                users[user].evidences.forEach((ev, idx) => {
+                    allEvidences.push({...ev,
+                        user,
+                        idx
+                    });
+                });
+            }
+
+            document.getElementById("totalUsers").innerText = Object.keys(users).length;
+            document.getElementById("totalPoints").innerText = totalPoints;
+            document.getElementById("totalCompleted").innerText = totalCompleted;
+
+            document.getElementById("adminEvidenceList").innerHTML = allEvidences.map((ev, i) => `
+        <div class="p-4 border rounded bg-gray-50">
+          <p><strong>Usuario:</strong> ${ev.user}</p>
+          <p><strong>Desafío:</strong> ${ev.challenge}</p>
+          <img src="${ev.data}" alt="Evidencia" class="my-2 max-w-xs rounded shadow">
+          <p><strong>Estado:</strong> ${ev.status}</p>
+          ${ev.status === "Pendiente" ? `
+            <button onclick="verifyEvidence('${ev.user}', ${ev.idx}, true)" class="bg-green-500 text-white px-3 py-1 rounded mr-2">Aprobar</button>
+            <button onclick="verifyEvidence('${ev.user}', ${ev.idx}, false)" class="bg-red-500 text-white px-3 py-1 rounded">Rechazar</button>
+          ` : ''}
+        </div>
+      `).join('');
+    }
+
+    function verifyEvidence(user, index, approve) {
+      if (approve && !users[user].completed.includes(users[user].evidences[index].challenge)) {
+        users[user].completed.push(users[user].evidences[index].challenge);
+        users[user].points += 10;
+      }
+      users[user].evidences[index].status = approve ? "Aprobado" : "Rechazado";
+      localStorage.setItem('users', JSON.stringify(users));
+      updateAdminPanel();
+    }
+    </script>
+</body>
+
+</html>
+
+
+
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Econnect 🌱</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-green-50 text-gray-800">
+
+    <!-- Pantalla de bienvenida -->
+    <div id="welcomeScreen" class="min-h-screen flex flex-col justify-center items-center p-6 bg-green-100">
+        <h1 class="text-4xl font-bold text-green-700 mb-4">Bienvenido a Econnect 🌍</h1>
+        <p class="max-w-xl text-center mb-6 text-lg">
+            Econnect es una plataforma educativa que promueve hábitos sostenibles a través de desafíos ambientales. Súmate, gana puntos, y haz del mundo un lugar mejor. ¡Tú también puedes hacer la diferencia!
+        </p>
+        <button onclick="showLogin()" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">Comenzar</button>
+    </div>
+
+    <!-- Modal de login/registro -->
+    <div id="loginModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-lg p-8 max-w-sm w-full text-center">
+            <h2 class="text-2xl font-bold text-green-600 mb-4">Iniciar Sesión</h2>
+            <input type="text" id="loginUsername" placeholder="Nombre de usuario" class="w-full mb-3 p-2 border rounded" />
+            <input type="password" id="loginPassword" placeholder="Contraseña" class="w-full mb-3 p-2 border rounded" />
+            <button onclick="login()" class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600">Entrar</button>
+            <p id="loginError" class="text-red-600 text-sm mt-2 hidden">Usuario o contraseña incorrectos.</p>
+            <hr class="my-4" />
+            <h2 class="text-lg font-bold text-green-600 mb-2">¿Nuevo aquí?</h2>
+            <input type="text" id="registerUsername" placeholder="Nuevo usuario" class="w-full mb-2 p-2 border rounded" />
+            <input type="password" id="registerPassword" placeholder="Contraseña" class="w-full mb-3 p-2 border rounded" />
+            <button onclick="register()" class="w-full bg-green-400 text-white py-2 rounded hover:bg-green-500">Registrarse</button>
+        </div>
+    </div>
+
+    <!-- Panel principal del usuario -->
+    <div id="userPanel" class="hidden max-w-5xl mx-auto p-6 mt-6 bg-white rounded-xl shadow-lg">
+
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold text-green-700">Bienvenido, <span id="userNameDisplay"></span> 👋</h1>
+            <button onclick="logout()" class="bg-red-500 text-white px-4 py-1 rounded hover:bg-red-600">Cerrar sesión</button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="bg-green-100 p-4 rounded">
+                <h2 class="font-semibold text-green-700">Tus Estadísticas</h2>
+                <p>Desafíos completados: <span id="userCompleted">0</span></p>
+                <p>Puntos acumulados: <span id="userPoints">0</span></p>
+            </div>
+        </div>
+
+        <h2 class="text-xl font-bold text-green-700 mb-2">Desafíos disponibles</h2>
+        <div id="challengeList" class="grid md:grid-cols-2 gap-4"></div>
+    </div>
+
+    <!-- Panel del administrador -->
+    <div id="adminPanel" class="hidden max-w-6xl mx-auto p-6 mt-6 bg-white rounded-xl shadow-lg">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold text-green-800">Panel de Administración 🛠️</h1>
+            <button onclick="logout()" class="bg-red-500 text-white px-4 py-1 rounded hover:bg-red-600">Cerrar sesión</button>
+        </div>
+
+        <div class="bg-green-100 p-4 rounded mb-6">
+            <h2 class="font-semibold">Estadísticas Globales</h2>
+            <p>Usuarios registrados: <span id="totalUsers">0</span></p>
+            <p>Puntos totales: <span id="totalPoints">0</span></p>
+            <p>Desafíos completados: <span id="totalCompleted">0</span></p>
+        </div>
+
+        <h2 class="text-xl font-bold text-green-700 mb-2">Evidencias pendientes</h2>
+        <div id="adminEvidenceList" class="space-y-4"></div>
+    </div>
+
+    <script>
+        let users = JSON.parse(localStorage.getItem('users') || '{}');
+        let currentUser = null;
+        const challenges = [{
+            name: 'Recoger Basura',
+            img: 'https://cdn-icons-png.flaticon.com/512/2909/2909765.png'
+        }, {
+            name: 'Usar Bicicleta',
+            img: 'https://cdn-icons-png.flaticon.com/512/1946/1946488.png'
+        }, {
+            name: 'Ahorrar Agua',
+            img: 'https://cdn-icons-png.flaticon.com/512/861/861256.png'
+        }, {
+            name: 'Recolección de Pet Durante una Semana',
+            img: 'https://cdn-icons-png.flaticon.com/512/809/809957.png'
+        }];
+
+        function showLogin() {
+            document.getElementById('welcomeScreen').classList.add('hidden');
+            document.getElementById('loginModal').classList.remove('hidden');
+        }
+
+        function register() {
+            const user = document.getElementById("registerUsername").value.trim();
+            const pass = document.getElementById("registerPassword").value.trim();
+            if (user && pass && !users[user]) {
+                users[user] = {
+                    password: pass,
+                    points: 0,
+                    completed: [],
+                    evidences: []
+                };
+                localStorage.setItem('users', JSON.stringify(users));
+                alert("Usuario registrado correctamente");
+            } else {
+                alert("Usuario inválido o ya existe.");
+            }
+        }
+
+        function login() {
+            const user = document.getElementById("loginUsername").value.trim();
+            const pass = document.getElementById("loginPassword").value.trim();
+
+            if (user === "admin" && pass === "admin123") {
+                currentUser = "admin";
+                document.getElementById("loginModal").classList.add("hidden");
+                document.getElementById("adminPanel").classList.remove("hidden");
+                updateAdminPanel();
+                return;
+            }
+
+            if (users[user] && users[user].password === pass) {
+                currentUser = user;
+                document.getElementById("loginModal").classList.add("hidden");
+                document.getElementById("userPanel").classList.remove("hidden");
+                document.getElementById("userNameDisplay").innerText = currentUser;
+                updateUserPanel();
+            } else {
+                document.getElementById("loginError").classList.remove("hidden");
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById("userPanel").classList.add("hidden");
+            document.getElementById("adminPanel").classList.add("hidden");
+            document.getElementById("loginModal").classList.remove("hidden");
+        }
+
+        function completeChallenge(index, fileInput) {
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    users[currentUser].evidences.push({
+                        challenge: challenges[index].name,
+                        data: reader.result,
+                        status: "Pendiente"
+                    });
+                    localStorage.setItem('users', JSON.stringify(users));
+                    alert("Evidencia enviada para revisión.");
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function updateUserPanel() {
+            const user = users[currentUser];
+            document.getElementById("userPoints").innerText = user.points;
+            document.getElementById("userCompleted").innerText = user.completed.length;
+
+            document.getElementById("challengeList").innerHTML = challenges.map((ch, i) => `
+        <div class="border rounded p-4 flex gap-4 items-center bg-gray-50">
+          <img src="${ch.img}" alt="${ch.name}" class="w-12 h-12">
+          <div>
+            <p class="font-semibold">${ch.name}</p>
+            <input type="file" accept="image/*" onchange="completeChallenge(${i}, this)" class="mt-2">
+          </div>
+        </div>
+      `).join('');
+        }
+
+        function updateAdminPanel() {
+            let allEvidences = [];
+            let totalPoints = 0;
+            let totalCompleted = 0;
+
+            for (let user in users) {
+                totalPoints += users[user].points;
+                totalCompleted += users[user].completed.length;
+
+                users[user].evidences.forEach((ev, idx) => {
+                    allEvidences.push({...ev,
+                        user,
+                        idx
+                    });
+                });
+            }
+
+            document.getElementById("totalUsers").innerText = Object.keys(users).length;
+            document.getElementById("totalPoints").innerText = totalPoints;
+            document.getElementById("totalCompleted").innerText = totalCompleted;
+
+            document.getElementById("adminEvidenceList").innerHTML = allEvidences.map((ev, i) => `
+        <div class="p-4 border rounded bg-gray-50">
+          <p><strong>Usuario:</strong> ${ev.user}</p>
+          <p><strong>Desafío:</strong> ${ev.challenge}</p>
+          <img src="${ev.data}" alt="Evidencia" class="my-2 max-w-xs rounded shadow">
+          <p><strong>Estado:</strong> ${ev.status}</p>
+          ${ev.status === "Pendiente" ? `
+            <button onclick="verifyEvidence('${ev.user}', ${ev.idx}, true)" class="bg-green-500 text-white px-3 py-1 rounded mr-2">Aprobar</button>
+            <button onclick="verifyEvidence('${ev.user}', ${ev.idx}, false)" class="bg-red-500 text-white px-3 py-1 rounded">Rechazar</button>
+          ` : ''}
+        </div>
+      `).join('');
+    }
+
+    function verifyEvidence(user, index, approve) {
+      if (approve && !users[user].completed.includes(users[user].evidences[index].challenge)) {
+        users[user].completed.push(users[user].evidences[index].challenge);
+        users[user].points += 10;
+      }
+      users[user].evidences[index].status = approve ? "Aprobado" : "Rechazado";
+      localStorage.setItem('users', JSON.stringify(users));
+      updateAdminPanel();
+    }
+    </script>
+</body>
+
+</html>
